@@ -1,8 +1,6 @@
-#include "drivers/joy.h"
+#include "joy.h"
 
 #include <stdlib.h>
-
-#include "config.h"
 
 JOY joy;
 
@@ -11,8 +9,9 @@ uint8_t rxBuf[12] = {0};
 uint8_t rxCount = 0;
 }  // namespace
 
-void JOY::init() {
-  JOY_PORT.begin(cfg::JOY_BAUD);
+void JOY::init(const JoyConfig& cfg) {
+  cfg_ = cfg;
+  JOY_PORT.begin(cfg_.baud);
 }
 
 bool JOY::parsePacket(const uint8_t* buf, uint32_t nowMs) {
@@ -51,10 +50,10 @@ bool JOY::parsePacket(const uint8_t* buf, uint32_t nowMs) {
   Ry = buf[9];
   _Ry = static_cast<int8_t>(map(Ry, 0, 255, -127, 127));
 
-  if (abs(_Lx) < cfg::JOY_LX_OFFSET) _Lx = 0;
-  if (abs(_Ly) < cfg::JOY_LY_OFFSET) _Ly = 0;
-  if (abs(_Rx) < cfg::JOY_RX_OFFSET) _Rx = 0;
-  if (abs(_Ry) < cfg::JOY_RY_OFFSET) _Ry = 0;
+  if (abs(_Lx) < cfg_.lxOffset) _Lx = 0;
+  if (abs(_Ly) < cfg_.lyOffset) _Ly = 0;
+  if (abs(_Rx) < cfg_.rxOffset) _Rx = 0;
+  if (abs(_Ry) < cfg_.ryOffset) _Ry = 0;
 
   count = nowMs;
   flip_bit = !flip_bit;
@@ -63,7 +62,7 @@ bool JOY::parsePacket(const uint8_t* buf, uint32_t nowMs) {
 }
 
 bool JOY::isLinkAlive(uint32_t nowMs) const {
-  return isConnected && ((nowMs - count) <= cfg::JOY_TIMEOUT_MS);
+  return isConnected && ((nowMs - count) <= cfg_.timeoutMs);
 }
 
 void serialEvent7(void) {

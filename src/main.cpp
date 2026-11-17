@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <joy.h>
+#include <motor_can_driver.h>
+
 #include "config.h"
 #include "distance_control.h"
-#include "drivers/joy.h"
-#include "drivers/motor_can_driver.h"
 #include "joy_drive.h"
 #include "kinematics.h"
 #include "math_utils.h"
@@ -206,8 +207,29 @@ void setup() {
   while (!Serial && (millis() - startMs < 1500)) {
   }
 
-  joy.init();
-  canMotor.begin();
+  JoyConfig joyCfg;
+  joyCfg.baud = cfg::JOY_BAUD;
+  joyCfg.timeoutMs = cfg::JOY_TIMEOUT_MS;
+  joyCfg.lxOffset = cfg::JOY_LX_OFFSET;
+  joyCfg.lyOffset = cfg::JOY_LY_OFFSET;
+  joyCfg.rxOffset = cfg::JOY_RX_OFFSET;
+  joyCfg.ryOffset = cfg::JOY_RY_OFFSET;
+  joy.init(joyCfg);
+
+  MotorCanConfig canCfg;
+  canCfg.canBaud = cfg::CAN_BAUD;
+  canCfg.boardIdRear = cfg::BOARD_ID_REAR;
+  canCfg.boardIdFront = cfg::BOARD_ID_FRONT;
+  canCfg.maxSafeRpm = cfg::MAX_SAFE_CAN_RPM;
+  canCfg.gearRatio = cfg::GEAR_RATIO;
+  for (uint8_t i = 0; i < 4; i++) {
+    canCfg.wheelSign[i] = cfg::WHEEL_SIGN[i];
+  }
+  canCfg.interframeGapUs = cfg::MIN_INTERFRAME_GAP_US;
+  canCfg.rxTimeoutMs = cfg::CAN_RX_TIMEOUT_MS;
+  canCfg.debugPrintMs = cfg::DEBUG_PRINT_MS;
+  canMotor.begin(canCfg);
+
   initPoseAndGoalSource();
 }
 
@@ -255,7 +277,7 @@ void loop() {
       }
     }
 
-    canMotor.setWheelRpms(lastRpm);
+    canMotor.setWheelRpms(lastRpm.fl, lastRpm.fr, lastRpm.rl, lastRpm.rr);
   }
 
   if (nowMs - lastCanTxMs >= cfg::CAN_TX_INTERVAL_MS) {

@@ -14,6 +14,15 @@ typedef union {
 #define JOY_PORT Serial7
 #define JOY_TX_SIZE 6
 
+struct JoyConfig {
+  uint32_t baud = 115200;
+  uint32_t timeoutMs = 400;
+  int8_t lxOffset = 30;
+  int8_t lyOffset = 30;
+  int8_t rxOffset = 30;
+  int8_t ryOffset = 60;
+};
+
 struct JOY {
   // Raw stick bytes (0..255)
   uint8_t Lx = 0;
@@ -57,11 +66,14 @@ struct JOY {
   uint8_t txBuffer[JOY_TX_SIZE] = {0};
   uint8_t display = 0;
 
-  void init();
+  void init(const JoyConfig& cfg = JoyConfig{});
   bool parsePacket(const uint8_t* buf, uint32_t nowMs);
   bool isLinkAlive(uint32_t nowMs) const;
   void debug() const;
   void serialTransmitter();
+
+ private:
+  JoyConfig cfg_{};
 };
 
 extern JOY joy;

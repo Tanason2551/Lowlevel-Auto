@@ -19,13 +19,13 @@ struct CAN_message_t {
 };
 #endif
 
-#include "config.h"
-#include "math_utils.h"
-
 // ============================================================================
 // MTDriver Set A (Wheel Driver) Protocol: 2 Boards x 2 Motors = 4 Motors
-// Ported from testcanmudule/include/motor_can.h
+// Self-contained header (no dependency on project include/config.h).
 // ============================================================================
+constexpr float MT_DEFAULT_MAX_SAFE_RPM = 8000.0f;
+constexpr float MT_DEFAULT_RPM_SCALE = 1.0f;
+
 typedef enum : uint8_t {
   MT_CMD_SET_CURRENT_SPEED = 0x02,
   MT_CMD_MOTOR_STATUS = 0x08,
@@ -46,11 +46,17 @@ struct MotorBoardState {
   uint32_t rx_count = 0;
 };
 
+inline float clampRpmValue(float value, float minVal, float maxVal) {
+  if (value < minVal) return minVal;
+  if (value > maxVal) return maxVal;
+  return value;
+}
+
 inline float sanitizeRpm(float rpm, float maxRpm, float scale) {
   if (!isfinite(rpm)) {
     return 0.0f;
   }
-  return math_utils::clamp(rpm, -maxRpm, maxRpm) * scale;
+  return clampRpmValue(rpm, -maxRpm, maxRpm) * scale;
 }
 
 inline void packFloatBE(uint8_t* dst, float value) {
@@ -91,8 +97,8 @@ inline CAN_message_t makeExtendedFrame(uint8_t id, MT_CMD_SET_A_T cmd,
 /// Build an 8-byte SET_CURRENT_SPEED (0x02) frame for a 2-motor board.
 inline CAN_message_t buildSetCurrentSpeed2(
     uint8_t id, float rpm1, float rpm2,
-    float maxRpm = cfg::MAX_SAFE_CAN_RPM,
-    float scale = cfg::RPM_TO_CMD_SCALE) {
+    float maxRpm = MT_DEFAULT_MAX_SAFE_RPM,
+    float scale = MT_DEFAULT_RPM_SCALE) {
   CAN_message_t msg = makeExtendedFrame(id, MT_CMD_SET_CURRENT_SPEED, 8);
   packFloatBE(msg.buf, sanitizeRpm(rpm1, maxRpm, scale));
   packFloatBE(msg.buf + 4, sanitizeRpm(rpm2, maxRpm, scale));
