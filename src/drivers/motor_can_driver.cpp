@@ -25,13 +25,13 @@ void MotorCanDriver::update() {
 }
 
 void MotorCanDriver::setWheelRpms(const WheelRPM& rpm) {
-  const float flCmd = sanitizeRpm(rpm.fl * cfg::WHEEL_SIGN[0],
+  const float flCmd = sanitizeRpm(rpm.fl * cfg::GEAR_RATIO * cfg::WHEEL_SIGN[0],
                                   cfg::MAX_SAFE_CAN_RPM, 1.0f);
-  const float frCmd = sanitizeRpm(rpm.fr * cfg::WHEEL_SIGN[1],
+  const float frCmd = sanitizeRpm(rpm.fr * cfg::GEAR_RATIO * cfg::WHEEL_SIGN[1],
                                   cfg::MAX_SAFE_CAN_RPM, 1.0f);
-  const float rlCmd = sanitizeRpm(rpm.rl * cfg::WHEEL_SIGN[2],
+  const float rlCmd = sanitizeRpm(rpm.rl * cfg::GEAR_RATIO * cfg::WHEEL_SIGN[2],
                                   cfg::MAX_SAFE_CAN_RPM, 1.0f);
-  const float rrCmd = sanitizeRpm(rpm.rr * cfg::WHEEL_SIGN[3],
+  const float rrCmd = sanitizeRpm(rpm.rr * cfg::GEAR_RATIO * cfg::WHEEL_SIGN[3],
                                   cfg::MAX_SAFE_CAN_RPM, 1.0f);
 
   // Board 0 (0x65): Rear Left (M1), Rear Right (M2)
@@ -110,15 +110,15 @@ void MotorCanDriver::printDebug(Print& out, uint32_t nowMs) {
   out.print(boards_[0].target_rpm[1], 1);
   out.print(F("]"));
 
-  for (uint8_t i = 0; i < cfg::NUM_CAN_BOARDS; i++) {
-    out.print(F(" | 0x"));
-    out.print(boards_[i].node_id, HEX);
-    out.print(isBoardConnected(i, nowMs) ? F(":OK") : F(":LOST"));
-    out.print(F(" spd="));
-    out.print(boards_[i].current_speed, 1);
-    out.print(F(" rx="));
-    out.print(boards_[i].rx_count);
-  }
+  // for (uint8_t i = 0; i < cfg::NUM_CAN_BOARDS; i++) {
+  //   out.print(F(" | 0x"));
+  //   out.print(boards_[i].node_id, HEX);
+  //   out.print(isBoardConnected(i, nowMs) ? F(":OK") : F(":LOST"));
+  //   out.print(F(" spd="));
+  //   out.print(boards_[i].current_speed, 1);
+  //   out.print(F(" rx="));
+  //   out.print(boards_[i].rx_count);
+  // }
   out.println();
 }
 

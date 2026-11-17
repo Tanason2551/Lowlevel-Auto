@@ -48,19 +48,18 @@ void testMecanumKinematicsXConfig() {
          rLeft.rr < 0.0f);
   assert(nearf(fabsf(rLeft.fl), fabsf(rLeft.fr)));
 
-  // 3. Verify 2000 RPM range is NOT suppressed by MAX_WHEEL_RPM (2500.0)
-  // For R=0.05m: V = 10.47 m/s -> ~2000 RPM (below 2500, unclipped)
-  const RobotVelocity at2000{10.47f, 0.0f, 0.0f};
-  const WheelRPM r2000 = kin.inverseKinematics(at2000);
-  assert(r2000.fl > 1995.0f && r2000.fl < 2005.0f);
+  // 3. Verify 0.55 m/s gives ~105.04 true wheel RPM (below 130 RPM cap)
+  const RobotVelocity mid{0.55f, 0.0f, 0.0f};
+  const WheelRPM rMid = kin.inverseKinematics(mid);
+  assert(rMid.fl > 104.0f && rMid.fl < 106.0f);
 
   // 4. Proportional saturation preserves ratios when exceeding MAX_WHEEL_RPM
-  const RobotVelocity tooFast{10.0f, 5.0f, 0.0f};
+  const RobotVelocity tooFast{1.0f, 0.5f, 0.0f};
   const WheelRPM rSat = kin.inverseKinematics(tooFast);
   const float maxAbs = fmaxf(fmaxf(fabsf(rSat.fl), fabsf(rSat.fr)),
                              fmaxf(fabsf(rSat.rl), fabsf(rSat.rr)));
   assert(nearf(maxAbs, cfg::MAX_WHEEL_RPM));
-  assert(nearf(rSat.fr / rSat.fl, (10.0f + 5.0f) / (10.0f - 5.0f)));
+  assert(nearf(rSat.fr / rSat.fl, (1.0f + 0.5f) / (1.0f - 0.5f)));
   printf("[PASS] testMecanumKinematicsXConfig\n");
 }
 
@@ -89,16 +88,18 @@ void testDistanceControl() {
 void testLeftWheelInversionAndCanProtocol() {
   MecanumKinematics kin(cfg::WHEEL_RADIUS, cfg::HALF_LENGTH_X,
                         cfg::HALF_WIDTH_Y, cfg::MAX_WHEEL_RPM);
-  const WheelRPM raw = kin.inverseKinematics(RobotVelocity{0.4f, 0.0f, 0.0f});
+  const WheelRPM raw = kin.inverseKinematics(RobotVelocity{0.55f, 0.0f, 0.0f});
 
-  // Apply WHEEL_SIGN = {-1, 1, -1, 1} just like MotorCanDriver::setWheelRpms
-  const float flCmd = raw.fl * cfg::WHEEL_SIGN[0];
-  const float frCmd = raw.fr * cfg::WHEEL_SIGN[1];
-  const float rlCmd = raw.rl * cfg::WHEEL_SIGN[2];
-  const float rrCmd = raw.rr * cfg::WHEEL_SIGN[3];
+  // Apply GEAR_RATIO * WHEEL_SIGN just like MotorCanDriver::setWheelRpms
+  const float flCmd = raw.fl * cfg::GEAR_RATIO * cfg::WHEEL_SIGN[0];
+  const float frCmd = raw.fr * cfg::GEAR_RATIO * cfg::WHEEL_SIGN[1];
+  const float rlCmd = raw.rl * cfg::GEAR_RATIO * cfg::WHEEL_SIGN[2];
+  const float rrCmd = raw.rr * cfg::GEAR_RATIO * cfg::WHEEL_SIGN[3];
 
-  assert(flCmd < 0.0f && rlCmd < 0.0f);
-  assert(frCmd > 0.0f && rrCmd > 0.0f);
+  assert(flCmd < -2000.0f && flCmd > -2030.0f);
+  assert(rlCmd < -2000.0f && rlCmd > -2030.0f);
+  assert(frCmd > 2000.0f && frCmd < 2030.0f);
+  assert(rrCmd > 2000.0f && rrCmd < 2030.0f);
   assert(nearf(flCmd, -frCmd));
 
   // Verify MTDriver frame encoding & decoding

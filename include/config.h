@@ -19,7 +19,8 @@ constexpr uint32_t DEBUG_PRINT_MS      = 500;    // Serial debug print period
 constexpr float WHEEL_RADIUS   = 0.050f;  // meters (100 mm wheel)
 constexpr float HALF_LENGTH_X  = 0.180f;  // Lx: center to front/rear axle (m)
 constexpr float HALF_WIDTH_Y   = 0.175f;  // Ly: center to left/right wheel (m)
-constexpr float MAX_WHEEL_RPM  = 2500.0f; // Safe RPM cap for proportional scaling
+constexpr float MAX_WHEEL_RPM  = 200.0f;  
+constexpr float GEAR_RATIO     = 19.2f;   // Motor gearbox ratio (applied in MotorCanDriver)
 
 // Index order: [0]=FL, [1]=FR, [2]=RL, [3]=RR
 // Left wheels (FL, RL) are inverted (-1) to command negative RPM forward.
@@ -48,5 +49,25 @@ constexpr uint8_t  BOARD_ID_FRONT         = 0x66;     // M3=FL, M4=FR
 constexpr float    MAX_SAFE_CAN_RPM       = 8000.0f;  // Hard safety clamp
 constexpr float    RPM_TO_CMD_SCALE       = 1.0f;
 constexpr uint32_t MIN_INTERFRAME_GAP_US  = 350;      // MTDriver spec >= 300 us
+
+// ============================================================================
+// PS4 Zigbee Joystick Configuration (Ported from testJoy-zigbee, Serial7)
+// ============================================================================
+constexpr uint32_t JOY_BAUD            = 115200;
+constexpr uint32_t JOY_TIMEOUT_MS      = 400;   // Zero velocity if Zigbee stalls
+constexpr int8_t   JOY_LX_OFFSET       = 30;
+constexpr int8_t   JOY_LY_OFFSET       = 30;
+constexpr int8_t   JOY_RX_OFFSET       = 30;
+constexpr int8_t   JOY_RY_OFFSET       = 60;
+
+// Axis signs (+1 or -1) to match robot frame (+X fwd, +Y left, +omega CCW)
+constexpr int8_t   JOY_SIGN_VX         = 1;     // _Ly -> vx
+constexpr int8_t   JOY_SIGN_VY         = -1;    // _Lx -> vy
+constexpr int8_t   JOY_SIGN_OMEGA      = -1;    // _Rx -> omega
+
+constexpr float    JOY_MAX_LINEAR_VEL  = 0.55f; // m/s (~2017 motor RPM @ 19.2:1)
+constexpr float    JOY_MAX_ANGULAR_VEL = 1.50f; // rad/s
+constexpr float    JOY_LINEAR_ACCEL    = 2.00f; // m/s^2 slew limit
+constexpr float    JOY_ANGULAR_ACCEL   = 5.00f; // rad/s^2 slew limit
 
 } 
