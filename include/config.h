@@ -61,9 +61,9 @@ constexpr int8_t   JOY_RX_OFFSET       = 30;
 constexpr int8_t   JOY_RY_OFFSET       = 60;
 
 // Axis signs (+1 or -1) to match robot frame (+X fwd, +Y left, +omega CCW)
-constexpr int8_t   JOY_SIGN_VX         = 1;     // _Ly -> vx
-constexpr int8_t   JOY_SIGN_VY         = -1;    // _Lx -> vy
-constexpr int8_t   JOY_SIGN_OMEGA      = -1;    // _Rx -> omega
+constexpr int8_t   JOY_SIGN_VX         = 1;     // _Lx -> vx
+constexpr int8_t   JOY_SIGN_VY         = 1;     // _Ly -> vy
+constexpr int8_t   JOY_SIGN_OMEGA      = 1;    // _Ry -> omega
 
 constexpr float    JOY_MAX_LINEAR_VEL  = 0.55f; // m/s (~2017 motor RPM @ 19.2:1)
 constexpr float    JOY_MAX_ANGULAR_VEL = 1.50f; // rad/s

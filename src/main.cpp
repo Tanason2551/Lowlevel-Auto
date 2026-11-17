@@ -232,7 +232,7 @@ void loop() {
     lastControlUs = nowUs;
 
     if (driveMode == DriveMode::JOY) {
-      const JoyAxesInput joyIn{joy._Lx, joy._Ly, joy._Rx,
+      const JoyAxesInput joyIn{joy._Lx, joy._Ly, joy._Ry,
                                joy.isLinkAlive(nowMs)};
       lastVel = joyDrive.compute(joyIn, dt);
       lastRpm = kinematics.inverseKinematics(lastVel);

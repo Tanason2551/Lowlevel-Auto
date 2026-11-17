@@ -5,9 +5,9 @@
 #include "kinematics.h"
 
 struct JoyAxesInput {
-  int8_t lx = 0;  // Left stick X (-127..127) -> strafe vy
-  int8_t ly = 0;  // Left stick Y (-127..127) -> forward vx
-  int8_t rx = 0;  // Right stick X (-127..127) -> rotate omega
+  int8_t lx = 0;  // Joystick Lx (-127..127) -> forward/back vx
+  int8_t ly = 0;  // Joystick Ly (-127..127) -> strafe vy
+  int8_t ry = 0;  // Joystick Ry (-127..127) -> rotate omega
   bool linkAlive = false;
 };
 

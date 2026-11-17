@@ -34,11 +34,11 @@ RobotVelocity JoyDriveController::compute(const JoyAxesInput& input, float dt) {
   }
 
   const float targetVx =
-      normalizeAxis(input.ly) * static_cast<float>(signVx_) * maxLinearVel_;
+      normalizeAxis(input.lx) * static_cast<float>(signVx_) * maxLinearVel_;
   const float targetVy =
-      normalizeAxis(input.lx) * static_cast<float>(signVy_) * maxLinearVel_;
+      normalizeAxis(input.ly) * static_cast<float>(signVy_) * maxLinearVel_;
   const float targetOmega =
-      normalizeAxis(input.rx) * static_cast<float>(signOmega_) * maxAngularVel_;
+      normalizeAxis(input.ry) * static_cast<float>(signOmega_) * maxAngularVel_;
 
   lastVel_.vx =
       math_utils::slewRateLimit(lastVel_.vx, targetVx, linearAccel_, dt);
