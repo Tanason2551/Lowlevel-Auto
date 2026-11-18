@@ -4,6 +4,7 @@
 
 #include <joy.h>
 #include <motor_can_driver.h>
+#include <ros1_serial_rx.h>
 
 #include "config.h"
 #include "distance_control.h"
@@ -30,19 +31,19 @@ static MecanumKinematics kinematics(cfg::WHEEL_RADIUS, cfg::HALF_LENGTH_X,
                                     cfg::HALF_WIDTH_Y, cfg::MAX_WHEEL_RPM);
 
 static MotorCanDriver canMotor;
+static Ros1SerialRx rosRx;
 
 enum class DriveMode { JOY, DISTANCE };
 static DriveMode driveMode = DriveMode::JOY;
 
 // ============================================================================
-// Replaceable Pose & Goal Input Layer (Option B: Stand-alone Serial Test)
-// When integrating High-level later, replace ONLY initPoseAndGoalSource() and
-// updatePoseAndGoal() to read from SerialProxy (packets.h).
+// Pose & Goal Input Layer (High-Level ROS1 Serial1 or Stand-alone Simulation)
 // ============================================================================
 struct TestInputState {
   Pose2D pose{};
   Goal2D goal{};
   bool motionEnabled = false;
+  bool useHighLevelPose = true;  // true = Serial1 ROS1 pose, false = sim pose
   bool simIntegrate = true;
 };
 
@@ -65,7 +66,8 @@ static void printTestHelp() {
   Serial.println(F("\n=== Mecanum Joy + Distance Control Console ==="));
   Serial.println(F("  mode joy / mode dist : Switch control mode (default: JOY)"));
   Serial.println(F("  g <x> <y>            : Set goal (m) & enable motion (DIST)"));
-  Serial.println(F("  p <x> <y> <yaw>      : Set simulated pose (m, m, deg)"));
+  Serial.println(F("  hl <0|1>             : Pose source 1=ROS1 Serial1, 0=Sim"));
+  Serial.println(F("  p <x> <y> <yaw>      : Set simulated pose (when hl=0)"));
   Serial.println(F("  sim <0|1>            : Toggle simulated pose integration"));
   Serial.println(F("  0 / stop             : Stop all motors immediately"));
   Serial.println(F("  h                    : Show this help"));
@@ -91,6 +93,11 @@ static void handleTestSerialCommand(char* line) {
     setDriveMode(DriveMode::JOY);
   } else if (strcasecmp(line, "mode dist") == 0) {
     setDriveMode(DriveMode::DISTANCE);
+  } else if (strncmp(line, "hl ", 3) == 0) {
+    inputState.useHighLevelPose = (atoi(line + 3) != 0);
+    distanceCtrl.reset();
+    Serial.print(F("[CMD] Pose source: "));
+    Serial.println(inputState.useHighLevelPose ? F("ROS1 Serial1") : F("SIM"));
   } else if (strncmp(line, "g ", 2) == 0) {
     char* p1 = nullptr;
     char* p2 = nullptr;
@@ -160,12 +167,30 @@ static void pollTestSerial() {
 
 static void initPoseAndGoalSource() {
   inputState = TestInputState{};
+  rosRx.begin(Serial1, cfg::HL_SERIAL_BAUD);
   printTestHelp();
 }
 
 static void updatePoseAndGoal(const RobotVelocity& lastVel, float dt,
-                              Pose2D& poseOut, Goal2D& goalOut,
+                              uint32_t nowMs, Pose2D& poseOut, Goal2D& goalOut,
                               bool& enabledOut) {
+  if (inputState.useHighLevelPose) {
+    const bool hlAlive = rosRx.isLinkAlive(nowMs, cfg::HL_TIMEOUT_MS);
+    if (hlAlive) {
+      float xM = 0.0f;
+      float yM = 0.0f;
+      float yawRad = 0.0f;
+      rosRx.robotPose(xM, yM, yawRad);
+      inputState.pose.x = xM;
+      inputState.pose.y = yM;
+      inputState.pose.yawRad = math_utils::wrapAngle(yawRad);
+    }
+    poseOut = inputState.pose;
+    goalOut = inputState.goal;
+    enabledOut = inputState.motionEnabled && hlAlive;
+    return;
+  }
+
   if (inputState.motionEnabled && inputState.simIntegrate && dt > 0.0f) {
     const float c = cosf(inputState.pose.yawRad);
     const float s = sinf(inputState.pose.yawRad);
@@ -202,10 +227,18 @@ static void handleJoyModeButtons(uint32_t nowMs) {
 // Setup & 100 Hz Control Loop
 // ============================================================================
 void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
+
   Serial.begin(115200);
   const uint32_t startMs = millis();
   while (!Serial && (millis() - startMs < 1500)) {
   }
+
+  if (CrashReport) {
+    Serial.print(CrashReport);
+  }
+  Serial.println(F("[BOOT] Serial ready, initializing drivers..."));
 
   JoyConfig joyCfg;
   joyCfg.baud = cfg::JOY_BAUD;
@@ -231,10 +264,12 @@ void setup() {
   canMotor.begin(canCfg);
 
   initPoseAndGoalSource();
+  Serial.println(F("[BOOT] Setup complete"));
 }
 
 void loop() {
   canMotor.update();
+  rosRx.update();
   pollTestSerial();
 
   static uint32_t lastControlUs = micros();
@@ -262,7 +297,7 @@ void loop() {
       Pose2D pose;
       Goal2D goal;
       bool motionEnabled = false;
-      updatePoseAndGoal(lastVel, dt, pose, goal, motionEnabled);
+      updatePoseAndGoal(lastVel, dt, nowMs, pose, goal, motionEnabled);
 
       if (!motionEnabled) {
         lastVel = RobotVelocity{};
@@ -287,6 +322,7 @@ void loop() {
 
   if (nowMs - lastDebugMs >= cfg::DEBUG_PRINT_MS) {
     lastDebugMs = nowMs;
+    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
     if (driveMode == DriveMode::JOY) {
       Serial.print(F("[JOY] link="));
       Serial.print(joy.isLinkAlive(nowMs) ? F("OK") : F("LOST"));
@@ -297,18 +333,39 @@ void loop() {
       Serial.print(F(" w="));
       Serial.print(lastVel.omega, 2);
       Serial.print(' ');
+      Serial.print(F(" pose=("));
+      Serial.print(inputState.pose.x, 2);
+      Serial.print(',');
+      Serial.print(inputState.pose.y, 2);
+      Serial.print(',');
+      Serial.print(math_utils::radToDeg(inputState.pose.yawRad), 1);
+      Serial.println(F(")"));
+      
     } else {
-      Serial.print(F("[DIST] en="));
+      Serial.print(F("[DIST] hl="));
+      if (!inputState.useHighLevelPose) {
+        Serial.print(F("SIM"));
+      } else {
+        Serial.print(rosRx.isLinkAlive(nowMs, cfg::HL_TIMEOUT_MS) ? F("OK")
+                                                                  : F("LOST"));
+      }
+      Serial.print(F(" en="));
       Serial.print(inputState.motionEnabled ? 1 : 0);
-      Serial.print(F(" S="));
+      Serial.print(F(" pose=("));
+      Serial.print(inputState.pose.x, 2);
+      Serial.print(',');
+      Serial.print(inputState.pose.y, 2);
+      Serial.print(',');
+      Serial.print(math_utils::radToDeg(inputState.pose.yawRad), 1);
+      Serial.print(F(") S="));
       Serial.print(lastDistOut.distanceError, 3);
       Serial.print(F("m phi="));
       Serial.print(math_utils::radToDeg(lastDistOut.phiRad), 1);
       Serial.print(F("deg Vr="));
       Serial.print(lastDistOut.vr, 2);
       Serial.print(F(" goal="));
-      Serial.print(lastDistOut.atGoal ? F("YES ") : F("NO "));
+      Serial.println(lastDistOut.atGoal ? F("YES ") : F("NO "));
     }
-    canMotor.printDebug(Serial, nowMs);
+    // canMotor.printDebug(Serial, nowMs);
   }
 }

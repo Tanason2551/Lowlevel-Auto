@@ -1,6 +1,21 @@
 #include "motor_can_driver.h"
 
+#include <FlexCAN_T4.h>
+
+namespace {
+// Keep FlexCAN_T4 inside this single translation unit so its static _CAN1
+// pointer matches the ISR installed by g_can1.begin().
+FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> g_can1;
+}  // namespace
+
 MotorCanDriver* MotorCanDriver::s_instance_ = nullptr;
+
+MotorCanDriver::MotorCanDriver() {
+  boards_[0] = MotorBoardState{};
+  boards_[0].node_id = cfg_.boardIdRear;
+  boards_[1] = MotorBoardState{};
+  boards_[1].node_id = cfg_.boardIdFront;
+}
 
 void MotorCanDriver::begin(const MotorCanConfig& cfg) {
   cfg_ = cfg;
@@ -11,16 +26,16 @@ void MotorCanDriver::begin(const MotorCanConfig& cfg) {
 
   s_instance_ = this;
 
-  can_.begin();
-  can_.setBaudRate(cfg_.canBaud);
-  can_.enableFIFO();
-  can_.enableFIFOInterrupt();
-  can_.onReceive(onCanRxTrampoline);
-  can_.events();
+  g_can1.begin();
+  g_can1.setBaudRate(cfg_.canBaud);
+  g_can1.enableFIFO();
+  g_can1.enableFIFOInterrupt();
+  g_can1.onReceive(onCanRxTrampoline);
+  g_can1.events();
 }
 
 void MotorCanDriver::update() {
-  can_.events();
+  g_can1.events();
 }
 
 void MotorCanDriver::setWheelRpms(float fl, float fr, float rl, float rr) {
@@ -50,7 +65,7 @@ void MotorCanDriver::sendCanFrame(const CAN_message_t& msg) {
     }
   }
 
-  can_.write(msg);
+  g_can1.write(msg);
   lastTxUs_ = micros();
   hasSentFrame_ = true;
 }

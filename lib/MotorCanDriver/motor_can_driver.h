@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Arduino.h>
-#include <FlexCAN_T4.h>
 #include <stdint.h>
 
 #include "motor_can.h"
@@ -23,7 +22,7 @@ class MotorCanDriver {
  public:
   static constexpr uint8_t NUM_BOARDS = 2;
 
-  MotorCanDriver() = default;
+  MotorCanDriver();
 
   void begin(const MotorCanConfig& cfg = MotorCanConfig{});
   void update();
@@ -56,7 +55,6 @@ class MotorCanDriver {
   static MotorCanDriver* s_instance_;
 
   MotorCanConfig cfg_{};
-  FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can_;
   MotorBoardState boards_[NUM_BOARDS];
   uint32_t lastTxUs_ = 0;
   bool hasSentFrame_ = false;

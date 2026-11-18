@@ -70,4 +70,10 @@ constexpr float    JOY_MAX_ANGULAR_VEL = 1.50f; // rad/s
 constexpr float    JOY_LINEAR_ACCEL    = 2.00f; // m/s^2 slew limit
 constexpr float    JOY_ANGULAR_ACCEL   = 5.00f; // rad/s^2 slew limit
 
+// ============================================================================
+// High-Level ROS1 Serial Configuration (Ported from testSerialproxy-TPA2026)
+// ============================================================================
+constexpr uint32_t HL_SERIAL_BAUD      = 1000000; // Serial1 @ 1 Mbps
+constexpr uint32_t HL_TIMEOUT_MS       = 400;     // Stop DISTANCE mode if H2L stalls
+
 } 
